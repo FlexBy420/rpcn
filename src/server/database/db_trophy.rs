@@ -2,6 +2,16 @@ use tracing::error;
 use crate::server::database::*;
 
 impl Database {
+	pub fn delete_all_user_trophies(&self, user_id: i64) -> Result<(), DbError> {
+		self.conn
+			.execute("DELETE FROM user_trophies WHERE user_id = ?1", rusqlite::params![user_id])
+			.map_err(|e| {
+				error!("Unexpected error deleting trophies for user_id={}: {}", user_id, e);
+				DbError::Internal
+			})?;
+		Ok(())
+	}
+
 	pub fn record_user_trophy(&self, user_id: i64, communication_id: &str, trophy_id: i32, earned_at: i64) -> Result<(), DbError> {
 		self.conn
 			.execute(

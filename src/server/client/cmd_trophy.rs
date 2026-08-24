@@ -5,6 +5,30 @@ use crate::server::database::Database;
 use crate::server::stream_extractor::StreamExtractor;
 
 impl Client {
+	pub fn delete_trophies(&self, data: &mut StreamExtractor) -> Result<ErrorType, ErrorType> {
+		let login = data.get_string(false);
+		let password = data.get_string(false);
+
+		if data.error() {
+			warn!("DeleteTrophies: malformed packet");
+			return Err(ErrorType::Malformed);
+		}
+
+		let db = Database::new(self.get_database_connection()?);
+		let user_data = db.check_user(&login, &password, "", false).map_err(|_| ErrorType::LoginError)?;
+		if self.authentified && user_data.user_id != self.client_info.user_id {
+			warn!("DeleteTrophies: authenticated user attempted to delete trophies for another account");
+			return Err(ErrorType::InvalidInput);
+		}
+
+		db.delete_all_user_trophies(user_data.user_id).map_err(|e| {
+			error!("DeleteTrophies: failed to delete trophies for user_id={}: {:?}", user_data.user_id, e);
+			ErrorType::DbFail
+		})?;
+
+		Ok(ErrorType::NoError)
+	}
+
 	pub fn req_unlock_trophy(&mut self, data: &mut StreamExtractor, _reply: &mut Vec<u8>) -> Result<ErrorType, ErrorType> {
 		let com_id = data.get_com_id();
 		let trophy_id = data.get::<i32>();
